@@ -1,0 +1,64 @@
+version: "3.8"
+
+services:
+  tool-server:
+    build: ./tool_server
+    container_name: rhosp-agent-tool-server
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      # clouds.yaml must exist locally first - copy clouds.yaml.example and fill it in.
+      - ./clouds.yaml:/config/clouds.yaml:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/healthz')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: rhosp-agent-webui
+    restart: unless-stopped
+    ports:
+      - "3000:8080"
+    volumes:
+      - open-webui-data:/app/backend/data
+    environment:
+      # Point at the vLLM OpenAI-compatible endpoint once it's running (see README).
+      - OPENAI_API_BASE_URL=http://host.docker.internal:8000/v1
+      - OPENAI_API_KEY=local-key
+      - WEBUI_AUTH=true
+    depends_on:
+      - tool-server
+
+  # vLLM is intentionally NOT containerized here since it needs GPU passthrough
+  # and a locally-transferred model directory that varies per deployment. Run it
+  # directly on the VM (see README.md "Serve the model") once the model has been
+  # copied over. Once running, its OpenAI-compatible API on :8000 is what
+  # OPENAI_API_BASE_URL above points to.
+  #
+  # If you'd rather containerize it too:
+  #
+  # vllm:
+  #   image: vllm/vllm-openai:latest
+  #   container_name: rhosp-agent-vllm
+  #   restart: unless-stopped
+  #   runtime: nvidia
+  #   environment:
+  #     - NVIDIA_VISIBLE_DEVICES=all
+  #   volumes:
+  #     - ./models/<model-dir>:/model:ro
+  #   command: ["--model", "/model", "--max-model-len", "8192", "--api-key", "local-key"]
+  #   ports:
+  #     - "8000:8000"
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices:
+  #           - driver: nvidia
+  #             count: 1
+  #             capabilities: [gpu]
+
+volumes:
+  open-webui-data:

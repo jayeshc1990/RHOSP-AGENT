@@ -1,0 +1,19 @@
+# Secrets - never commit real cloud credentials
+clouds.yaml
+.env
+
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Model weights (large, transferred out-of-band for the airgap)
+models/
+*.safetensors
+*.bin
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

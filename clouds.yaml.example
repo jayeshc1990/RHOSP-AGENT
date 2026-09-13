@@ -1,0 +1,38 @@
+# Copy this file to clouds.yaml (gitignored) and fill in one entry per RHOSP cloud.
+#
+# IMPORTANT: every entry must authenticate with an APPLICATION CREDENTIAL scoped to
+# the built-in `reader` role (system-reader for cross-project visibility, or
+# project-reader for a single project). Never put an admin/member password here.
+#
+# See README.md "Create a read-only application credential" for the exact CLI
+# commands to create these on each cloud.
+
+clouds:
+  rhosp16-site-a:
+    auth:
+      auth_url: https://keystone.site-a.example.internal:5000/v3
+      application_credential_id: "REPLACE_ME"
+      application_credential_secret: "REPLACE_ME"
+    auth_type: v3applicationcredential
+    region_name: RegionOne
+    # RHOSP airgapped internal CAs are typically self-signed - point at your
+    # trust bundle rather than disabling verification.
+    cacert: /etc/pki/ca-trust/source/anchors/site-a-ca.pem
+
+  rhosp17-site-b:
+    auth:
+      auth_url: https://keystone.site-b.example.internal:5000/v3
+      application_credential_id: "REPLACE_ME"
+      application_credential_secret: "REPLACE_ME"
+    auth_type: v3applicationcredential
+    region_name: RegionOne
+    cacert: /etc/pki/ca-trust/source/anchors/site-b-ca.pem
+
+  rhosp18-site-c:
+    auth:
+      auth_url: https://keystone.site-c.example.internal:5000/v3
+      application_credential_id: "REPLACE_ME"
+      application_credential_secret: "REPLACE_ME"
+    auth_type: v3applicationcredential
+    region_name: RegionOne
+    cacert: /etc/pki/ca-trust/source/anchors/site-c-ca.pem
