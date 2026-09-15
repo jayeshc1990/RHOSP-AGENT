@@ -29,6 +29,11 @@ services:
       - OPENAI_API_BASE_URL=http://host.docker.internal:8000/v1
       - OPENAI_API_KEY=local-key
       - WEBUI_AUTH=true
+    extra_hosts:
+      # host.docker.internal resolves automatically on Docker Desktop (Mac/Windows)
+      # but NOT on native Linux Docker Engine - which is what the VM runs. Without
+      # this, Open WebUI can't reach vLLM on the host and silently shows no models.
+      - "host.docker.internal:host-gateway"
     depends_on:
       - tool-server
 
