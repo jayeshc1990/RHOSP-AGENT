@@ -76,10 +76,46 @@ huggingface-cli download Qwen/Qwen2.5-14B-Instruct --local-dir ./qwen2.5-14b-ins
 (Gated repos like Llama require accepting the license on huggingface.co first.)
 
 Verify the download, tar it, and transfer it to the VM via your approved
-offline-media process. Also bring across an offline wheelhouse for `vllm` and
-its dependencies if the VM has no internal PyPI mirror.
+offline-media process.
 
-### If you have internet on a staging machine: build the vLLM wheelhouse
+For `vllm` itself, check first whether the VM has **any** outbound path (many
+"airgapped" environments still route through a corporate proxy for approved
+destinations) before building an offline wheelhouse - it's far simpler if so.
+
+### Preferred: if the RHOSP-Agent VM itself has internet (even proxied/temporary)
+
+Install directly on the VM - it resolves every dependency correctly because
+it's the real target machine, and you never have to build or transfer a
+wheelhouse at all:
+
+```bash
+# Reuse whatever proxy apt already has configured, if any
+cat /etc/apt/apt.conf.d/*proxy* 2>/dev/null
+env | grep -i proxy
+
+export http_proxy="http://<proxy-host>:<port>"   # skip if no proxy needed
+export https_proxy="http://<proxy-host>:<port>"
+export no_proxy="localhost,127.0.0.1"
+
+curl -I https://pypi.org              # confirm reachability first
+curl -I https://files.pythonhosted.org
+
+source /opt/rhosp-agent-venv/bin/activate
+pip install --upgrade pip
+pip install vllm
+```
+
+If `curl` fails with an SSL error (a corporate proxy doing TLS interception is
+a common cause), point pip at your org's CA bundle: `export
+PIP_CERT=/path/to/corporate-ca-bundle.pem`. Once `pip install vllm` finishes,
+packages are cached in the venv - no further internet needed, and no
+wheelhouse to transfer. See [PROXY_ALLOWLIST.md](PROXY_ALLOWLIST.md) for the
+hosts to get whitelisted if `curl` is blocked.
+
+### Fallback: if only a separate staging machine has internet
+
+Only needed when the VM truly has zero outbound access. Build the wheelhouse
+there and transfer it in, same as the model.
 
 **Don't** just run `pip download vllm -d ./vllm-wheelhouse` on its own - it
 reliably misses transitive dependencies that are gated by platform markers
@@ -129,9 +165,14 @@ the staging machine's network in [PROXY_ALLOWLIST.md](PROXY_ALLOWLIST.md).
 
 ## 4. Serve the model with vLLM
 
-On the VM:
+If you used the staging-machine fallback above, install from the transferred
+wheelhouse instead of the direct `pip install vllm` shown there:
 ```bash
 pip install --no-index --find-links ./vllm-wheelhouse vllm   # or from an internal mirror
+```
+
+Either way, serve it the same way:
+```bash
 vllm serve /path/to/qwen2.5-14b-instruct \
   --max-model-len 8192 \
   --api-key local-key
