@@ -79,11 +79,11 @@ def get_resources(
         description="Drop link/internal-bookkeeping fields and null-valued fields to save tokens. "
         "Set false only if you need full raw detail on every item.",
     ),
-    limit: int = Query(
-        50,
-        description="Max full records to return in `results` when `operation` is not given. "
-        "`total_count` is always the TRUE total regardless of this cap - use it, not "
-        "len(results), when the user just wants a count.",
+    limit: Optional[int] = Query(
+        None,
+        description="Optionally cap how many records `results` includes when `operation` is "
+        "not given (unlimited/full result set if omitted). `total_count` is always the TRUE "
+        "total either way - use it, not len(results), when the user just wants a count.",
     ),
     operation: Optional[str] = Query(
         None,
