@@ -2,10 +2,11 @@
 title: RHOSP Agent Read-Only Tools
 author: RHOSP Agent
 description: Read-only query tools over RHOSP OpenStack clouds via the tool_server API.
-version: 0.1.0
+version: 0.2.0
 """
 
 import json
+from typing import Optional
 
 import requests
 from pydantic import BaseModel, Field
@@ -44,18 +45,17 @@ class Tools:
         name: str = "",
         status: str = "",
         project_id: str = "",
-        operation_json: str = "",
+        operation: Optional[dict] = None,
     ) -> str:
         """
         List resources of a given type on a given cloud, optionally filtered by name,
         status, or project_id. Returns {"total_count", "returned_count", "results"} -
-        results is capped (currently at 50 full records) even when total_count is
-        larger, to avoid dumping a huge raw list into your own context. total_count is
-        always the TRUE total - use it, not the length of results, whenever the user
-        just wants a count.
+        results may be capped even when total_count is larger, to avoid dumping a huge
+        raw list into your own context. total_count is always the TRUE total - use it,
+        not the length of results, whenever the user just wants a count.
 
         For "how many X" or "X matching Y" on a cloud that might have a lot of
-        resources, prefer passing operation_json instead of fetching everything and
+        resources, prefer passing operation instead of fetching everything and
         counting/filtering it yourself - it runs server-side against the FULL result
         set (not just the capped page) and returns only the small final answer, e.g.
         an exact count or a short filtered list, so a large raw list never has to pass
@@ -66,8 +66,8 @@ class Tools:
         :param name: Optional exact-name filter (applied by the OpenStack API itself).
         :param status: Optional status filter (applied by the OpenStack API itself).
         :param project_id: Optional owning-project filter (applied by the OpenStack API itself).
-        :param operation_json: Optional JSON object string describing a server-side operation to
-            run against the full result set instead of returning a raw list, e.g.
+        :param operation: Optional object describing a server-side operation to run against
+            the full result set instead of returning a raw list, e.g.
             {"op": "count"} or
             {"op": "filter", "field": "flavor.original_name", "operator": "eq", "value": "m1.small"} or
             {"op": "group_by_count", "field": "status"} or
@@ -84,8 +84,8 @@ class Tools:
             params["status"] = status
         if project_id:
             params["project_id"] = project_id
-        if operation_json:
-            params["operation"] = operation_json
+        if operation:
+            params["operation"] = json.dumps(operation)
         r = requests.get(
             f"{self.valves.TOOL_SERVER_BASE_URL}/resources/{resource_type}",
             params=params,
@@ -110,14 +110,17 @@ class Tools:
         r.raise_for_status()
         return r.text
 
-    def analyze(self, data_json: str, operation_json: str) -> str:
+    def analyze(self, data: list, operation: dict) -> str:
         """
         Deterministically filter/count/group/sort data already fetched via list_resources.
         Use this instead of counting or filtering a large list yourself - it does not call
-        OpenStack, it only processes data you already fetched.
+        OpenStack, it only processes data you already fetched. Prefer passing `operation`
+        directly to list_resources instead of this two-step fetch-then-analyze when
+        possible - it's more reliable and avoids the large list passing through your
+        context at all.
 
-        :param data_json: JSON array string of the resource list to analyze (the exact output of list_resources).
-        :param operation_json: JSON object string describing the operation, e.g.
+        :param data: The resource list to analyze (the exact `results` array from list_resources).
+        :param operation: Object describing the operation, e.g.
             {"op": "count"} or
             {"op": "filter", "field": "flavor.original_name", "operator": "eq", "value": "m1.small"} or
             {"op": "group_by_count", "field": "status"} or
@@ -125,7 +128,7 @@ class Tools:
             {"op": "top_n", "n": 5} or
             {"op": "distinct", "field": "status"}.
         """
-        payload = {"data": json.loads(data_json), "operation": json.loads(operation_json)}
+        payload = {"data": data, "operation": operation}
         r = requests.post(f"{self.valves.TOOL_SERVER_BASE_URL}/analyze", json=payload, timeout=30)
         r.raise_for_status()
         return r.text

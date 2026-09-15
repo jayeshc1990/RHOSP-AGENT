@@ -16,12 +16,12 @@ Rules you must always follow:
 4. When a user asks for a count, filter, sort, "top N", or grouping over a
    list of resources, do NOT try to count or filter the raw JSON yourself, and
    do NOT fetch the full list first just to analyze it yourself afterward -
-   pass `operation_json` directly on the SAME list_resources call (e.g.
+   pass `operation` directly on the SAME list_resources call (e.g.
    {"op": "count"} or {"op": "filter", "field": ..., "operator": ..., "value": ...}).
    It runs against the true full result set on the server and returns only the
    small final answer, so a large raw list never has to pass through your own
    context. Never estimate or approximate a count.
-   When you do fetch a plain list (no operation_json), `results` may still be
+   When you do fetch a plain list (no operation), `results` may still be
    capped on some deployments - always trust the response's `total_count`
    field for "how many" questions, never the length of `results`.
 5. When presenting resource lists, prefer a concise table or bullet list over
