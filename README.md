@@ -185,6 +185,36 @@ curl http://localhost:8000/v1/chat/completions \
   -d '{"model": "/path/to/qwen2.5-14b-instruct", "messages": [{"role": "user", "content": "hello"}]}'
 ```
 
+`vllm serve` is a long-running foreground process (like any web server) - it
+won't return your terminal, and that's expected while you're smoke-testing it.
+Once it's confirmed working, run it as a systemd service instead of leaving it
+attached to a terminal, so it survives reboots and restarts on crash:
+
+```bash
+sudo tee /etc/systemd/system/vllm.service > /dev/null <<'EOF'
+[Unit]
+Description=vLLM OpenAI-compatible server
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/opt/rhosp-agent-venv/bin/vllm serve /data/qwen2.5-14b-instruct --max-model-len 8192 --api-key local-key
+Restart=on-failure
+User=root
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now vllm
+sudo journalctl -u vllm -f   # watch logs / confirm it came up clean
+```
+
+Adjust `ExecStart` to your actual venv path and model directory. Swap
+`User=root` for a dedicated non-root service account if you have one set up -
+`vllm serve` itself doesn't need root, that's just the simplest default here.
+
 ## 5. Run the tool server + Open WebUI
 
 ```bash
