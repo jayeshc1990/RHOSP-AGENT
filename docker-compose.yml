@@ -37,6 +37,14 @@ services:
       - OPENAI_API_BASE_URL=http://host.docker.internal:8000/v1
       - OPENAI_API_KEY=local-key
       - WEBUI_AUTH=true
+      # Without these, huggingface_hub does an online "check for updates" call for
+      # the RAG embedding model on every startup - even if it's already cached -
+      # which HANGS (not fails) when there's no internet, leaving the container
+      # stuck forever at "Waiting for application startup" and never healthy.
+      # Forces using ONLY the local cache: instant if it's there, a fast clear
+      # error instead of a silent hang if it isn't.
+      - HF_HUB_OFFLINE=1
+      - TRANSFORMERS_OFFLINE=1
     extra_hosts:
       # host.docker.internal resolves automatically on Docker Desktop (Mac/Windows)
       # but NOT on native Linux Docker Engine - which is what the VM runs. Without
