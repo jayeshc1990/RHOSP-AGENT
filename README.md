@@ -209,7 +209,6 @@ Either way, serve it with tool-calling explicitly enabled - **required**, since
 this whole agent depends on real tool calls (not optional flags to skip):
 ```bash
 vllm serve /path/to/qwen2.5-14b-instruct \
-  --max-model-len 32768 \
   --api-key local-key \
   --enable-auto-tool-choice \
   --tool-call-parser hermes
@@ -221,6 +220,17 @@ function-calling client send) with `"auto" tool choice requires
 parser documented for Qwen2.5's tool-call format; confirm the exact choices
 available for your installed vLLM version with `vllm serve --help | grep -A5
 tool-call-parser` if `hermes` doesn't work.
+
+Deliberately **not** passing `--max-model-len` above - omitting it lets vLLM
+use the model's own native max context instead of an artificial cap. On a
+local GPU with no per-request cost, there's no reason to shrink it manually;
+GPU memory is the real ceiling either way (vLLM refuses to start if the
+native max context's KV cache can't fit in available VRAM, so this is safe to
+try - worst case it errors at startup telling you what does fit, and you can
+pass an explicit `--max-model-len <n>` at or below that instead). This also
+gives real headroom for `tool_server`'s [response compaction](tool_server/app/openstack_client.py)
+to not be the only thing standing between you and a context-length error on
+a cloud with a lot of resources.
 
 This exposes an OpenAI-compatible API on `http://localhost:8000/v1` with native
 tool/function-calling support. Smoke-test before wiring up the UI:
@@ -243,7 +253,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/opt/rhosp-agent-venv/bin/vllm serve /data/qwen2.5-14b-instruct --max-model-len 32768 --api-key local-key --enable-auto-tool-choice --tool-call-parser hermes
+ExecStart=/opt/rhosp-agent-venv/bin/vllm serve /data/qwen2.5-14b-instruct --api-key local-key --enable-auto-tool-choice --tool-call-parser hermes
 Restart=on-failure
 User=root
 
