@@ -63,11 +63,69 @@ REGISTRY: dict[str, ResourceSpec] = {
 
     # Orchestration (Heat) - present on some RHOSP deployments
     "stacks": ResourceSpec("orchestration", "stacks", "get_stack"),
+
+    # Load Balancing (Octavia) - present on some RHOSP deployments
+    "load_balancers": ResourceSpec("load_balancer", "load_balancers", "get_load_balancer"),
+    "load_balancer_listeners": ResourceSpec("load_balancer", "listeners", "get_listener"),
+    "load_balancer_pools": ResourceSpec("load_balancer", "pools", "get_pool"),
 }
 
 
 def allowed_resource_types() -> list[str]:
     return sorted(REGISTRY.keys())
+
+
+# Common natural-language terms mapped to the canonical REGISTRY key. A model
+# knows "compute nodes"/"load balancers" as domain terms, not necessarily the
+# exact internal key ("hypervisors"/"load_balancers") - resolve common phrasings
+# instead of erroring on a technically-valid but differently-spelled request.
+RESOURCE_TYPE_ALIASES: dict[str, str] = {
+    "vm": "servers",
+    "vms": "servers",
+    "instance": "servers",
+    "instances": "servers",
+    "compute_node": "hypervisors",
+    "compute_nodes": "hypervisors",
+    "computenode": "hypervisors",
+    "computenodes": "hypervisors",
+    "host": "hypervisors",
+    "hosts": "hypervisors",
+    "loadbalancer": "load_balancers",
+    "loadbalancers": "load_balancers",
+    "lb": "load_balancers",
+    "lbs": "load_balancers",
+    "disk": "volumes",
+    "disks": "volumes",
+    "snapshot": "volume_snapshots",
+    "snapshots": "volume_snapshots",
+    "backup": "volume_backups",
+    "backups": "volume_backups",
+    "flavor": "flavors",
+    "image": "images",
+    "network": "networks",
+    "subnet": "subnets",
+    "port": "ports",
+    "router": "routers",
+    "securitygroup": "security_groups",
+    "securitygroups": "security_groups",
+    "floatingip": "floating_ips",
+    "floatingips": "floating_ips",
+    "project": "projects",
+    "tenant": "projects",
+    "tenants": "projects",
+    "domain": "domains",
+    "user": "users",
+    "stack": "stacks",
+}
+
+
+def resolve_resource_type(name: str) -> str:
+    """Normalize a caller-supplied resource type to its canonical REGISTRY key,
+    via RESOURCE_TYPE_ALIASES if it's a recognized alias, else unchanged
+    (REGISTRY lookups elsewhere still validate it and reject anything unknown -
+    this only widens what counts as a valid *spelling* of a real entry)."""
+    key = name.strip().lower().replace("-", "_").replace(" ", "_")
+    return RESOURCE_TYPE_ALIASES.get(key, key)
 
 
 # Curated top-level fields kept when summarizing a resource for a plain listing
@@ -102,6 +160,9 @@ SUMMARY_FIELDS: dict[str, list[str]] = {
     "domains": ["id", "name", "enabled"],
     "users": ["id", "name", "domain_id", "enabled"],
     "stacks": ["id", "stack_name", "stack_status"],
+    "load_balancers": ["id", "name", "provisioning_status", "operating_status", "vip_address"],
+    "load_balancer_listeners": ["id", "name", "protocol", "protocol_port", "provisioning_status"],
+    "load_balancer_pools": ["id", "name", "protocol", "lb_algorithm", "provisioning_status"],
 }
 
 _DEFAULT_SUMMARY_FIELDS = ["id", "name", "status"]

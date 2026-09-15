@@ -41,7 +41,7 @@ from pydantic import BaseModel
 
 from . import openstack_client as osc
 from .analyze import Operation, apply_operation
-from .registry import allowed_resource_types, summarize_item
+from .registry import allowed_resource_types, resolve_resource_type, summarize_item
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("rhosp-agent-tool-server")
@@ -96,6 +96,7 @@ def get_resources(
         "every matching record, not just the capped page `limit` would otherwise return.",
     ),
 ) -> dict:
+    resource_type = resolve_resource_type(resource_type)
     filters = {k: v for k, v in {"name": name, "status": status, "project_id": project_id}.items() if v}
     try:
         logger.info("list_resources cloud=%s type=%s filters=%s compact=%s", cloud, resource_type, filters, compact)

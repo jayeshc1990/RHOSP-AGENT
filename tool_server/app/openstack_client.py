@@ -10,7 +10,7 @@ import os
 import openstack
 import yaml
 
-from .registry import REGISTRY
+from .registry import REGISTRY, resolve_resource_type
 
 
 class UnknownCloudError(Exception):
@@ -78,6 +78,7 @@ def _compact_item(item: dict) -> dict:
 def list_resources(
     cloud: str, resource_type: str, filters: dict | None = None, compact: bool = True
 ) -> list[dict]:
+    resource_type = resolve_resource_type(resource_type)
     if resource_type not in REGISTRY:
         raise UnknownResourceTypeError(
             f"'{resource_type}' is not a readable resource type. "
@@ -97,6 +98,7 @@ def list_resources(
 
 
 def get_resource(cloud: str, resource_type: str, resource_id: str) -> dict:
+    resource_type = resolve_resource_type(resource_type)
     if resource_type not in REGISTRY:
         raise UnknownResourceTypeError(
             f"'{resource_type}' is not a readable resource type. "
