@@ -5,7 +5,18 @@
 # project-reader for a single project). Never put an admin/member password here.
 #
 # See README.md "Create a read-only application credential" for the exact CLI
-# commands to create these on each cloud.
+# commands to create these on each cloud, and "Get the CA certificate" for how
+# to obtain each cacert file below.
+#
+# CA certs: put every cloud's cert file in ./ca-certs/ (same directory as this
+# file and docker-compose.yml) and reference it below with the FULL ABSOLUTE
+# path on THIS HOST - e.g. if this project lives at /opt/rhosp-agent, a cert
+# saved as ./ca-certs/site-a-ca.pem is referenced as
+# /opt/rhosp-agent/ca-certs/site-a-ca.pem. This exact absolute path must work
+# both for direct `openstack` CLI testing on the host AND inside the
+# tool-server container - docker-compose.yml mounts ./ca-certs at that same
+# absolute path for that reason. Adding a new cloud is then just "drop its
+# cert file in ./ca-certs/" - no docker-compose.yml change needed.
 
 clouds:
   rhosp16-site-a:
@@ -15,9 +26,7 @@ clouds:
       application_credential_secret: "REPLACE_ME"
     auth_type: v3applicationcredential
     region_name: RegionOne
-    # RHOSP airgapped internal CAs are typically self-signed - point at your
-    # trust bundle rather than disabling verification.
-    cacert: /etc/pki/ca-trust/source/anchors/site-a-ca.pem
+    cacert: /opt/rhosp-agent/ca-certs/site-a-ca.pem
 
   rhosp17-site-b:
     auth:
@@ -26,7 +35,7 @@ clouds:
       application_credential_secret: "REPLACE_ME"
     auth_type: v3applicationcredential
     region_name: RegionOne
-    cacert: /etc/pki/ca-trust/source/anchors/site-b-ca.pem
+    cacert: /opt/rhosp-agent/ca-certs/site-b-ca.pem
 
   rhosp18-site-c:
     auth:
@@ -35,4 +44,4 @@ clouds:
       application_credential_secret: "REPLACE_ME"
     auth_type: v3applicationcredential
     region_name: RegionOne
-    cacert: /etc/pki/ca-trust/source/anchors/site-c-ca.pem
+    cacert: /opt/rhosp-agent/ca-certs/site-c-ca.pem

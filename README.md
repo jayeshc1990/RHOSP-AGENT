@@ -57,6 +57,40 @@ cp clouds.yaml.example clouds.yaml
 Fill in `auth_url`, `application_credential_id`, `application_credential_secret`,
 `region_name`, and `cacert` for each cloud. `clouds.yaml` is gitignored - never commit it.
 
+### Get each cloud's CA certificate
+
+RHOSP internal Keystone endpoints typically use a self-signed or internal
+enterprise CA. Extract it directly from the endpoint:
+```bash
+echo | openssl s_client -connect keystone.site-a.example.internal:5000 \
+  -servername keystone.site-a.example.internal -showcerts 2>/dev/null \
+  | sed -n '/-----BEGIN CERTIFICATE-----/,/-----END CERTIFICATE-----/p' \
+  > ca-certs/site-a-ca.pem
+```
+Confirm it parses: `openssl x509 -in ca-certs/site-a-ca.pem -noout -subject -issuer -dates`.
+If that single cert isn't self-signed (`subject` != `issuer`), it's likely only
+one link in a longer chain - the more reliable source is often whatever CA
+bundle already lets an *existing* trusted host on that network (e.g. the
+undercloud) connect successfully: `cat /etc/pki/ca-trust/source/anchors/*.pem`
+there, or grab the full system bundle from `/etc/pki/tls/certs/ca-bundle.crt`.
+
+**Put every cloud's cert file in `./ca-certs/`** (same directory as this
+`README.md` and `docker-compose.yml`) and reference it in `clouds.yaml` using
+the **full absolute path on this host** - e.g. if this project lives at
+`/opt/rhosp-agent`, a cert saved as `./ca-certs/site-a-ca.pem` is referenced as
+`cacert: /opt/rhosp-agent/ca-certs/site-a-ca.pem`. This matters because that
+exact path needs to resolve both for direct `openstack` CLI testing on the
+host *and* inside the `tool-server` container - `docker-compose.yml` mounts
+`./ca-certs` at that same absolute path for exactly that reason (a container
+has its own isolated filesystem, so a host path referenced in `cacert:` would
+otherwise be invisible to it). Adding another cloud later is then just "drop
+its cert file in `./ca-certs/`" - no `docker-compose.yml` change needed.
+
+Test before moving on:
+```bash
+openstack --os-cloud rhosp16-site-a --os-cacert ca-certs/site-a-ca.pem server list
+```
+
 ## 3. Get a model onto the airgapped VM
 
 Pick a tier based on the VRAM you checked in step 0. This workload (NL → a

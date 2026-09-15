@@ -10,12 +10,14 @@ services:
     volumes:
       # clouds.yaml must exist locally first - copy clouds.yaml.example and fill it in.
       - ./clouds.yaml:/config/clouds.yaml:ro
-      # Any cacert: path referenced inside clouds.yaml must ALSO be mounted into
-      # this container at the exact same absolute path - the container has its
-      # own isolated filesystem, so a path that works for host-side `openstack`
-      # CLI testing is invisible in here unless explicitly mounted too. Add one
-      # line per CA cert file referenced in clouds.yaml, mounted at its own path:
-      - /data/RHOSP-AGENT/RHOSP-AGENT/JPE1B-CA-CERT.pem:/data/RHOSP-AGENT/RHOSP-AGENT/JPE1B-CA-CERT.pem:ro
+      # ONE directory holding every cloud's CA cert file. Mounted at the same
+      # absolute path it has on the host, so the same clouds.yaml works
+      # unchanged for both host-side `openstack` CLI testing and this
+      # container - the container's filesystem is otherwise isolated, so a
+      # host path referenced in cacert: would be invisible here without this.
+      # Adding a new cloud = drop its cert file in ./ca-certs/ and reference
+      # it in clouds.yaml - no docker-compose.yml change needed, ever.
+      - ./ca-certs:/data/RHOSP-AGENT/RHOSP-AGENT/ca-certs:ro
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/healthz')"]
       interval: 30s

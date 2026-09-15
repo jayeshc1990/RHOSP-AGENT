@@ -2,6 +2,10 @@
 clouds.yaml
 .env
 
+# Per-cloud CA cert files - deployment-specific, not secret but not portable either
+ca-certs/*
+!ca-certs/.gitkeep
+
 __pycache__/
 *.pyc
 .venv/
