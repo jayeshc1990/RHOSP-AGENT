@@ -1,9 +1,12 @@
-# Proxy Allowlist — Staging Machine (Model/Package Downloads)
+# Proxy Allowlist — Staging Machine / RHOSP-Agent VM
 
-This list is for the **internet-connected machine** used to download model weights,
-Python packages, and container images before transferring them into the airgapped
-RHOSP-Agent environment (see [README.md](README.md) step 3). The airgapped VM itself
-needs none of this — it never has outbound internet access.
+This list covers hosts needed to download model weights, Python packages, and
+container images - whether that's happening on a separate **internet-connected
+staging machine** (see [README.md](README.md) step 3's fallback path) before an
+offline transfer, or directly on the **RHOSP-Agent VM itself** if it has
+proxied/temporary outbound access (the preferred path in step 3/4). If the VM is
+genuinely airgapped with zero outbound access, none of this applies to it - only
+to the staging machine.
 
 All entries are outbound **HTTPS (443)** unless noted otherwise.
 
@@ -58,3 +61,19 @@ file through a CDN host not in this list; the log shows exactly which one got bl
 |---|---|
 | `developer.download.nvidia.com` | CUDA toolkit, driver installers |
 | `nvidia.github.io` | `nvidia-container-toolkit` apt/yum repo |
+
+## Debian/Ubuntu package mirrors — needed on the RHOSP-Agent VM itself
+
+Needed for `docker compose build` (the `tool-server` image installs `gcc`/
+`python3-dev` via apt to compile `netifaces`, a transitive `openstacksdk`
+dependency with no prebuilt wheel for every Python version) and for any other
+`apt install` on the VM (e.g. `docker-compose-plugin` via apt instead of the
+GitHub binary).
+
+| Host | Why |
+|---|---|
+| `deb.debian.org` | Debian package mirror - the `python:3.12-slim` base image's apt sources |
+| `security.debian.org` | Debian security updates mirror |
+| `archive.ubuntu.com` | Ubuntu package mirror - the VM's own OS (Ubuntu 24.04) |
+| `security.ubuntu.com` | Ubuntu security updates mirror |
+| `download.docker.com` | Docker's official apt repo, only if installing `docker-compose-plugin` via apt rather than the GitHub release binary |
