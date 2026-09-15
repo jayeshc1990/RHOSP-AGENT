@@ -36,6 +36,7 @@ REGISTRY: dict[str, ResourceSpec] = {
     "compute_availability_zones": ResourceSpec("compute", "availability_zones", None),
     "keypairs": ResourceSpec("compute", "keypairs", "get_keypair"),
     "server_groups": ResourceSpec("compute", "server_groups", "get_server_group"),
+    "compute_services": ResourceSpec("compute", "services", None),  # `openstack compute service list`
 
     # Networking (Neutron)
     "networks": ResourceSpec("network", "networks", "get_network"),
@@ -52,6 +53,7 @@ REGISTRY: dict[str, ResourceSpec] = {
     "volume_snapshots": ResourceSpec("block_storage", "snapshots", "get_snapshot"),
     "volume_backups": ResourceSpec("block_storage", "backups", "get_backup"),
     "volume_types": ResourceSpec("block_storage", "types", None),
+    "volume_services": ResourceSpec("block_storage", "services", None),  # `openstack volume service list`
 
     # Image (Glance)
     "images": ResourceSpec("image", "images", "get_image"),
@@ -116,6 +118,16 @@ RESOURCE_TYPE_ALIASES: dict[str, str] = {
     "domain": "domains",
     "user": "users",
     "stack": "stacks",
+    "compute_service": "compute_services",
+    "computeservices": "compute_services",
+    "computeservice": "compute_services",
+    "nova_services": "compute_services",
+    "novaservices": "compute_services",
+    "volume_service": "volume_services",
+    "volumeservices": "volume_services",
+    "volumeservice": "volume_services",
+    "cinder_services": "volume_services",
+    "cinderservices": "volume_services",
 }
 
 
@@ -143,6 +155,7 @@ SUMMARY_FIELDS: dict[str, list[str]] = {
     "compute_availability_zones": ["name", "state"],
     "keypairs": ["name", "fingerprint", "type"],
     "server_groups": ["id", "name", "policies"],
+    "compute_services": ["id", "binary", "host", "status", "state", "zone"],
     "networks": ["id", "name", "status", "is_shared", "subnet_ids"],
     "subnets": ["id", "name", "cidr", "network_id"],
     "ports": ["id", "name", "status", "fixed_ips", "device_id"],
@@ -155,6 +168,7 @@ SUMMARY_FIELDS: dict[str, list[str]] = {
     "volume_snapshots": ["id", "name", "status", "volume_id", "size"],
     "volume_backups": ["id", "name", "status", "volume_id", "size"],
     "volume_types": ["id", "name"],
+    "volume_services": ["id", "binary", "host", "status", "state", "zone"],
     "images": ["id", "name", "status", "disk_format", "size"],
     "projects": ["id", "name", "domain_id", "enabled"],
     "domains": ["id", "name", "enabled"],
