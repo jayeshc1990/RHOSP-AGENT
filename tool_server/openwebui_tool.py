@@ -44,15 +44,38 @@ class Tools:
         name: str = "",
         status: str = "",
         project_id: str = "",
+        operation_json: str = "",
     ) -> str:
         """
-        List resources of a given type on a given cloud, optionally filtered by name, status, or project_id.
+        List resources of a given type on a given cloud, optionally filtered by name,
+        status, or project_id. Returns {"total_count", "returned_count", "results"} -
+        results is capped (currently at 50 full records) even when total_count is
+        larger, to avoid dumping a huge raw list into your own context. total_count is
+        always the TRUE total - use it, not the length of results, whenever the user
+        just wants a count.
+
+        For "how many X" or "X matching Y" on a cloud that might have a lot of
+        resources, prefer passing operation_json instead of fetching everything and
+        counting/filtering it yourself - it runs server-side against the FULL result
+        set (not just the capped page) and returns only the small final answer, e.g.
+        an exact count or a short filtered list, so a large raw list never has to pass
+        through your context at all.
 
         :param cloud: Cloud name, from list_clouds.
         :param resource_type: Resource type, from list_resource_types (e.g. "servers", "networks", "volumes").
-        :param name: Optional exact-name filter.
-        :param status: Optional status filter.
-        :param project_id: Optional owning-project filter.
+        :param name: Optional exact-name filter (applied by the OpenStack API itself).
+        :param status: Optional status filter (applied by the OpenStack API itself).
+        :param project_id: Optional owning-project filter (applied by the OpenStack API itself).
+        :param operation_json: Optional JSON object string describing a server-side operation to
+            run against the full result set instead of returning a raw list, e.g.
+            {"op": "count"} or
+            {"op": "filter", "field": "flavor.original_name", "operator": "eq", "value": "m1.small"} or
+            {"op": "group_by_count", "field": "status"} or
+            {"op": "sort", "field": "name"} or
+            {"op": "top_n", "n": 5} or
+            {"op": "distinct", "field": "status"}.
+            When given, the response is {"result": <the operation's output>} instead of
+            {"total_count", "returned_count", "results"}.
         """
         params = {"cloud": cloud}
         if name:
@@ -61,6 +84,8 @@ class Tools:
             params["status"] = status
         if project_id:
             params["project_id"] = project_id
+        if operation_json:
+            params["operation"] = operation_json
         r = requests.get(
             f"{self.valves.TOOL_SERVER_BASE_URL}/resources/{resource_type}",
             params=params,
