@@ -41,7 +41,7 @@ from pydantic import BaseModel
 
 from . import openstack_client as osc
 from .analyze import Operation, apply_operation
-from .registry import allowed_resource_types
+from .registry import allowed_resource_types, summarize_item
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("rhosp-agent-tool-server")
@@ -115,10 +115,13 @@ def get_resources(
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
 
+    page = full[:limit]
     return {
         "total_count": len(full),
-        "returned_count": min(limit, len(full)),
-        "results": full[:limit],
+        "returned_count": len(page),
+        "results": [summarize_item(item, resource_type) for item in page],
+        "note": "results is trimmed to a few key fields per item to save tokens - "
+        "use get_resource for full detail on one specific item.",
     }
 
 

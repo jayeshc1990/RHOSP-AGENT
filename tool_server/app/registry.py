@@ -68,3 +68,45 @@ REGISTRY: dict[str, ResourceSpec] = {
 
 def allowed_resource_types() -> list[str]:
     return sorted(REGISTRY.keys())
+
+
+# Curated top-level fields kept when summarizing a resource for a plain listing
+# page (GET /resources/{type} with no `operation`). A full server dict alone
+# can easily run 500-1000+ tokens (security_groups, tags, metadata, OS-EXT-*
+# attributes, image, host info, ...) - way too much for a human-facing list of
+# even a few dozen items. This is display-only pruning: the `operation` path in
+# main.py runs against the full (lightly-compacted, not summarized) data, so
+# filter/count/group-by results stay accurate across any field, not just the
+# ones listed here.
+SUMMARY_FIELDS: dict[str, list[str]] = {
+    "servers": ["id", "name", "status", "flavor", "addresses", "created_at", "project_id"],
+    "flavors": ["id", "name", "vcpus", "ram", "disk"],
+    "hypervisors": ["id", "name", "status", "state"],
+    "compute_availability_zones": ["name", "state"],
+    "keypairs": ["name", "fingerprint", "type"],
+    "server_groups": ["id", "name", "policies"],
+    "networks": ["id", "name", "status", "is_shared", "subnet_ids"],
+    "subnets": ["id", "name", "cidr", "network_id"],
+    "ports": ["id", "name", "status", "fixed_ips", "device_id"],
+    "routers": ["id", "name", "status"],
+    "security_groups": ["id", "name", "description"],
+    "security_group_rules": ["id", "protocol", "direction", "port_range_min", "port_range_max"],
+    "floating_ips": ["id", "floating_ip_address", "status", "port_id"],
+    "network_agents": ["id", "agent_type", "host", "alive", "admin_state_up"],
+    "volumes": ["id", "name", "status", "size", "volume_type"],
+    "volume_snapshots": ["id", "name", "status", "volume_id", "size"],
+    "volume_backups": ["id", "name", "status", "volume_id", "size"],
+    "volume_types": ["id", "name"],
+    "images": ["id", "name", "status", "disk_format", "size"],
+    "projects": ["id", "name", "domain_id", "enabled"],
+    "domains": ["id", "name", "enabled"],
+    "users": ["id", "name", "domain_id", "enabled"],
+    "stacks": ["id", "stack_name", "stack_status"],
+}
+
+_DEFAULT_SUMMARY_FIELDS = ["id", "name", "status"]
+
+
+def summarize_item(item: dict, resource_type: str) -> dict:
+    fields = SUMMARY_FIELDS.get(resource_type, _DEFAULT_SUMMARY_FIELDS)
+    return {k: item[k] for k in fields if k in item}
