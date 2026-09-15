@@ -77,10 +77,55 @@ huggingface-cli download Qwen/Qwen2.5-14B-Instruct --local-dir ./qwen2.5-14b-ins
 
 Verify the download, tar it, and transfer it to the VM via your approved
 offline-media process. Also bring across an offline wheelhouse for `vllm` and
-its dependencies if the VM has no internal PyPI mirror:
+its dependencies if the VM has no internal PyPI mirror.
+
+### If you have internet on a staging machine: build the vLLM wheelhouse
+
+**Don't** just run `pip download vllm -d ./vllm-wheelhouse` on its own - it
+reliably misses transitive dependencies that are gated by platform markers
+(e.g. `llguidance`), which then fail on the airgapped VM with "no matching
+distribution found" one package at a time. The robust way is to actually
+**resolve and install vLLM for real** in an environment matching the VM
+(Python 3.12, Linux x86_64), then download exactly what that real install
+resolved to:
+
 ```bash
-pip download vllm -d ./vllm-wheelhouse
+mkdir -p vllm-wheelhouse-build && cd vllm-wheelhouse-build
+docker run --rm -v "$PWD:/out" python:3.12-slim bash -c "
+  pip install --upgrade pip -q &&
+  pip install vllm -q &&
+  pip freeze > /out/vllm-frozen-requirements.txt &&
+  mkdir -p /out/vllm-wheelhouse &&
+  pip download -r /out/vllm-frozen-requirements.txt --only-binary=:all: -d /out/vllm-wheelhouse &&
+  echo DONE
+"
+tar -czf vllm-wheelhouse-complete.tar.gz vllm-wheelhouse
 ```
+
+This needs no GPU (it only resolves and downloads packages, never runs them).
+Expect several GB - PyTorch and its bundled CUDA runtime libraries dominate
+the size. Match the Python version (`python3 --version` on the target VM) if
+it differs from 3.12.
+
+**No Docker on the staging machine?** Use WSL2 instead for the same effect:
+```bash
+wsl --install -d Ubuntu-24.04
+```
+then inside WSL:
+```bash
+sudo apt update && sudo apt install -y python3.12 python3.12-venv
+python3.12 -m venv ~/v && source ~/v/bin/activate
+pip install --upgrade pip -q && pip install vllm -q
+pip freeze > ~/frozen.txt
+mkdir -p ~/vllm-wheelhouse
+pip download -r ~/frozen.txt --only-binary=:all: -d ~/vllm-wheelhouse
+tar -czf ~/vllm-wheelhouse-complete.tar.gz -C ~ vllm-wheelhouse
+```
+(grab the result from `\\wsl$\Ubuntu-24.04\home\<user>\` in Windows Explorer)
+
+Transfer `vllm-wheelhouse-complete.tar.gz` to the VM the same way as the model,
+via your approved offline-media process - see the proxy hosts you'll need on
+the staging machine's network in [PROXY_ALLOWLIST.md](PROXY_ALLOWLIST.md).
 
 ## 4. Serve the model with vLLM
 
