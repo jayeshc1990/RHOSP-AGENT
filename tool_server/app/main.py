@@ -59,11 +59,16 @@ def get_resources(
     name: Optional[str] = Query(None, description="Filter by exact name, if supported by the resource"),
     status: Optional[str] = Query(None, description="Filter by status, if supported by the resource"),
     project_id: Optional[str] = Query(None, description="Filter by owning project id, if supported"),
+    compact: bool = Query(
+        True,
+        description="Drop link/internal-bookkeeping fields and null-valued fields to save tokens. "
+        "Set false only if you need full raw detail on every item.",
+    ),
 ) -> list[dict]:
     filters = {k: v for k, v in {"name": name, "status": status, "project_id": project_id}.items() if v}
     try:
-        logger.info("list_resources cloud=%s type=%s filters=%s", cloud, resource_type, filters)
-        return osc.list_resources(cloud, resource_type, filters)
+        logger.info("list_resources cloud=%s type=%s filters=%s compact=%s", cloud, resource_type, filters, compact)
+        return osc.list_resources(cloud, resource_type, filters, compact=compact)
     except osc.UnknownCloudError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except osc.UnknownResourceTypeError as e:

@@ -63,7 +63,21 @@ def _get_connection(cloud: str) -> "openstack.connection.Connection":
     return openstack.connect(cloud=cloud)
 
 
-def list_resources(cloud: str, resource_type: str, filters: dict | None = None) -> list[dict]:
+# Fields dropped from every resource dict when compact=True (the default).
+# These are SDK-internal bookkeeping or link/reference noise that eats tokens
+# without being useful to the model - not resource data itself. None-valued
+# fields are also dropped, since OpenStack resource dicts have dozens of
+# optional fields that are usually unset.
+_COMPACT_DROP_KEYS = {"links", "location"}
+
+
+def _compact_item(item: dict) -> dict:
+    return {k: v for k, v in item.items() if k not in _COMPACT_DROP_KEYS and v is not None}
+
+
+def list_resources(
+    cloud: str, resource_type: str, filters: dict | None = None, compact: bool = True
+) -> list[dict]:
     if resource_type not in REGISTRY:
         raise UnknownResourceTypeError(
             f"'{resource_type}' is not a readable resource type. "
@@ -76,7 +90,10 @@ def list_resources(cloud: str, resource_type: str, filters: dict | None = None) 
     # openstacksdk list methods accept **query kwargs, which become GET query
     # string parameters against the OpenStack API - still a read-only call.
     results = list_fn(**(filters or {}))
-    return [r.to_dict() for r in results]
+    dicts = [r.to_dict() for r in results]
+    if compact:
+        dicts = [_compact_item(d) for d in dicts]
+    return dicts
 
 
 def get_resource(cloud: str, resource_type: str, resource_id: str) -> dict:
