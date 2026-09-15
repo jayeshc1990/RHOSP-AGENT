@@ -209,7 +209,7 @@ Either way, serve it with tool-calling explicitly enabled - **required**, since
 this whole agent depends on real tool calls (not optional flags to skip):
 ```bash
 vllm serve /path/to/qwen2.5-14b-instruct \
-  --max-model-len 8192 \
+  --max-model-len 32768 \
   --api-key local-key \
   --enable-auto-tool-choice \
   --tool-call-parser hermes
@@ -243,7 +243,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/opt/rhosp-agent-venv/bin/vllm serve /data/qwen2.5-14b-instruct --max-model-len 8192 --api-key local-key --enable-auto-tool-choice --tool-call-parser hermes
+ExecStart=/opt/rhosp-agent-venv/bin/vllm serve /data/qwen2.5-14b-instruct --max-model-len 32768 --api-key local-key --enable-auto-tool-choice --tool-call-parser hermes
 Restart=on-failure
 User=root
 
