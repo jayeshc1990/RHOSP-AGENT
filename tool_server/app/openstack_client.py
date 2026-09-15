@@ -8,7 +8,7 @@ import functools
 import os
 
 import openstack
-from openstack.config import loader as config_loader
+import yaml
 
 from .registry import REGISTRY
 
@@ -25,9 +25,33 @@ class ResourceHasNoGetError(Exception):
     pass
 
 
+_CLOUDS_YAML_SEARCH_PATHS = [
+    os.environ.get("OS_CLIENT_CONFIG_FILE"),
+    "clouds.yaml",
+    os.path.expanduser("~/.config/openstack/clouds.yaml"),
+    "/etc/openstack/clouds.yaml",
+]
+
+
+def _find_clouds_yaml() -> str | None:
+    for path in _CLOUDS_YAML_SEARCH_PATHS:
+        if path and os.path.isfile(path):
+            return path
+    return None
+
+
 def list_configured_clouds() -> list[str]:
-    config = config_loader.OpenStackConfig()
-    return sorted(c.name for c in config.get_all())
+    # Deliberately does NOT use openstack.config.loader's get_all()/get_one(),
+    # which fully instantiate an auth plugin (and validate every required auth
+    # field) for EVERY cloud just to read their names - one incomplete or
+    # placeholder cloud entry anywhere in clouds.yaml would then break listing
+    # every cloud, including working ones. Just read the names directly.
+    path = _find_clouds_yaml()
+    if not path:
+        return []
+    with open(path) as f:
+        data = yaml.safe_load(f) or {}
+    return sorted((data.get("clouds") or {}).keys())
 
 
 @functools.lru_cache(maxsize=32)
