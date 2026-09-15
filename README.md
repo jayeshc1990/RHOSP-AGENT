@@ -171,12 +171,23 @@ wheelhouse instead of the direct `pip install vllm` shown there:
 pip install --no-index --find-links ./vllm-wheelhouse vllm   # or from an internal mirror
 ```
 
-Either way, serve it the same way:
+Either way, serve it with tool-calling explicitly enabled - **required**, since
+this whole agent depends on real tool calls (not optional flags to skip):
 ```bash
 vllm serve /path/to/qwen2.5-14b-instruct \
   --max-model-len 8192 \
-  --api-key local-key
+  --api-key local-key \
+  --enable-auto-tool-choice \
+  --tool-call-parser hermes
 ```
+Without `--enable-auto-tool-choice --tool-call-parser <parser>`, vLLM rejects
+any request using `tool_choice: "auto"` (which Open WebUI and any real
+function-calling client send) with `"auto" tool choice requires
+--enable-auto-tool-choice and --tool-call-parser to be set`. `hermes` is the
+parser documented for Qwen2.5's tool-call format; confirm the exact choices
+available for your installed vLLM version with `vllm serve --help | grep -A5
+tool-call-parser` if `hermes` doesn't work.
+
 This exposes an OpenAI-compatible API on `http://localhost:8000/v1` with native
 tool/function-calling support. Smoke-test before wiring up the UI:
 ```bash
@@ -198,7 +209,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/opt/rhosp-agent-venv/bin/vllm serve /data/qwen2.5-14b-instruct --max-model-len 8192 --api-key local-key
+ExecStart=/opt/rhosp-agent-venv/bin/vllm serve /data/qwen2.5-14b-instruct --max-model-len 8192 --api-key local-key --enable-auto-tool-choice --tool-call-parser hermes
 Restart=on-failure
 User=root
 
